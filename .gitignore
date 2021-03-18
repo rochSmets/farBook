@@ -1,4 +1,6 @@
 *checkpoint*
+*.png
+*.pdf
 *.mp4
 *.pkl
 *pycache*
