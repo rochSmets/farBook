@@ -159,7 +159,7 @@ def main():
     xv, yv = np.meshgrid(x, y)
 
     simulator = Simulator(gv.sim)
-    print(dir(simulator.simulation.set_model))
+    print(dir(simulator.simulation))
     n = simulator.density(xv, yv)
 
     # simulator = Simulator(gv.sim)
