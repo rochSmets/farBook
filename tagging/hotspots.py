@@ -48,6 +48,8 @@ def config():
     spot_pos = [[0.5*Lx, 0.0*Ly], [0.5*Lx, 1.0*Ly]]
     spot_axis = [[0.2*Lx, 0.2*Ly], [0.2*Lx, 0.2*Ly]]
 
+
+
     def polynom(x):
         X = np.fabs(x)
         w = -6*X**5+15*x**4-10*X**3+1
@@ -152,9 +154,17 @@ def main():
 
     config()
 
+    x = np.arange(20)*0.2
+    y = np.arange(20)*0.2
+    xv, yv = np.meshgrid(x, y)
+
     simulator = Simulator(gv.sim)
-    simulator.initialize()
-    simulator.run()
+    print(dir(simulator.simulation.set_model))
+    n = simulator.density(xv, yv)
+
+    # simulator = Simulator(gv.sim)
+    # simulator.initialize()
+    # simulator.run()
 
 
 if __name__=="__main__":
