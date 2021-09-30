@@ -19,26 +19,27 @@ mpl.use('Agg')
 
 
 
-numofcells = (200, 200)
-mesh = (0.2, 0.2)
+numofcells = [200, 200]
+mesh = [0.2, 0.2]
 
-Lx = numofcells[0]*mesh[0]
-Ly = numofcells[1]*mesh[1]
+L = [i*d for i, d in zip(numofcells, mesh)]
 
 num_of_spots = 2
-fi  = np.radians([20, -20])
-psi = np.radians([90, 180])
-spot_pos = [[0.5*Lx, 0.0*Ly], [0.5*Lx, 1.0*Ly]]
-spot_axis = [[0.2*Lx, 0.2*Ly], [0.2*Lx, 0.2*Ly]]
+fi  = np.radians([0, 0])
+psi = np.radians([0, 0])
+spot_pos = [[0.5*L[0], 0.0*L[1]], [0.5*L[0], 1.0*L[1]]]
+spot_axis = [[0.4*L[0], 0.4*L[1]], [0.4*L[0], 0.4*L[1]]]
 
+
+
+def rect(x):
+    return np.where(abs(x)<=1, 1, 0)
 
 
 def polynom(x):
     X = np.fabs(x)
     w = -6*X**5+15*x**4-10*X**3+1
-    m = np.clip(np.sign(x), 0, None)
-
-    return m*w
+    return rect(x)*w
 
 
 def rotate_coords(pos, beam_id):
@@ -162,11 +163,42 @@ def main():
 
     config()
 
-    x = np.arange(20)*0.2
-    y = np.arange(20)*0.2
+    x = (0.5+np.arange(numofcells[0]))*mesh[0]
+    y = (0.5+np.arange(numofcells[1]))*mesh[1]
     xv, yv = np.meshgrid(x, y)
 
     n0 = density(xv, yv)
+
+    X = np.arange(numofcells[0]+1)*mesh[0]
+    Y = np.arange(numofcells[1]+1)*mesh[1]
+
+    import matplotlib.pyplot as plt
+    from matplotlib import rc
+    import matplotlib.ticker as ticker
+
+    rc('text', usetex = True)
+    rc('font', size=12)
+    rc('axes', labelsize='larger')
+    rc('mathtext', default='regular')
+
+
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    pcm = ax.pcolormesh(X, Y, n0, cmap='viridis_r', edgecolors='face', vmin=0, vmax=1)
+    ic = ax.contour(x, y, n0, 8, colors=('k'))
+
+    ax.xaxis.set_major_locator(ticker.LinearLocator(3))
+    ax.yaxis.set_major_locator(ticker.LinearLocator(3))
+
+    ax.set_xlabel('$x / l_p$')
+    ax.set_ylabel('$y / l_p$')
+
+    plt.title('$\mathrm{Electron \ Density}$')
+
+    cbar = fig.colorbar(pcm, ticks = [0, 0.5, 1], pad = 0.03, aspect = 40)
+
+    plt.savefig('zob.pdf')
 
     # simulator = Simulator(gv.sim)
     # simulator.initialize()
