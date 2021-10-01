@@ -26,7 +26,7 @@ L = [i*d for i, d in zip(numofcells, mesh)]
 
 num_of_spots = 2
 fi  = np.radians([0, 0])
-psi = np.radians([0, 0])
+psi = np.radians([40, 40])
 spot_pos = [[0.5*L[0], 0.0*L[1]], [0.5*L[0], 1.0*L[1]]]
 spot_axis = [[0.4*L[0], 0.4*L[1]], [0.4*L[0], 0.4*L[1]]]
 
