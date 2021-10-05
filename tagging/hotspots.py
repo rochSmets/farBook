@@ -24,11 +24,19 @@ mesh = [0.2, 0.2]
 
 L = [i*d for i, d in zip(numofcells, mesh)]
 
-num_of_spots = 2
-fi  = np.radians([0, 0])
-psi = np.radians([40, 40])
-spot_pos = [[0.5*L[0], 0.0*L[1]], [0.5*L[0], 1.0*L[1]]]
-spot_axis = [[0.4*L[0], 0.4*L[1]], [0.4*L[0], 0.4*L[1]]]
+# num_of_spots = 2
+# fi  = np.radians([0, 0])
+# psi = np.radians([-40, 40])
+# spot_pos = [[0.5*L[0], 0.0*L[1]], [0.5*L[0], 1.0*L[1]]]
+# spot_axis = [[0.1*L[0], 0.5*L[1]], [0.1*L[0], 0.5*L[1]]]
+# spot_width = [0.2, 0.2]
+
+num_of_spots = 1
+fi  = np.radians([0])
+psi = np.radians([0])
+spot_pos = [[0.5*L[0], 0.5*L[1]]]
+spot_axis = [[0.3*L[0], 0.2*L[1]]]
+spot_width = [[0.5]]
 
 
 
@@ -43,7 +51,6 @@ def polynom(x):
 
 
 def rotate_coords(pos, beam_id):
-
     # rotation with fi angle
     wx = (pos[0]-spot_pos[beam_id][0])*np.cos(fi[beam_id])\
         +(pos[1]-spot_pos[beam_id][1])*np.sin(fi[beam_id])
@@ -52,35 +59,67 @@ def rotate_coords(pos, beam_id):
 
     #rotation with psi angle
     tx = wx
-    ty = wy*np.cos(psi[beam_id])
+    ty = wy/np.cos(psi[beam_id])
 
     return [tx, ty]
 
 
 def density(x, y):
-
     n = 0.0
 
     for isp in range(num_of_spots):
         tx, ty = rotate_coords([x, y], isp)
         ux, uy = [tx/spot_axis[isp][0], ty/spot_axis[isp][1]]
-        wa = np.sqrt(ux**2+uy**2)
+        ut = np.sqrt(ux**2+uy**2)
 
-        n += 1.0*polynom(wa)
-    #print("x = {0}, y = {1}, n = {2}".format(x, y, n))
+        n += 1.0*polynom(ut)
     return n
 
 
+def b_and_u(x, y, isp):
+    u = [None]*3
+
+    tx, ty = rotate_coords([x, y], isp)
+    ux, uy = [tx/spot_axis[isp][0], ty/spot_axis[isp][1]]
+    ut = np.clip(np.sqrt(ux**2+uy**2), 0.001, None)
+    wt = (ut-1)/spot_width[isp]
+
+    vx = +uy/spot_axis[isp][1]
+    vy = -ux/spot_axis[isp][0]
+    vt = np.clip(np.sqrt(vx**2+vy**2), 0.001, None)
+
+    # this normalization term is mandatory to ensure div B = 0 in an ellipsis
+    z = spot_axis[isp][1]*vt/ut
+
+    u[0] = (vx/vt)*np.cos(fi[isp])-(vy/vt)*np.sin(fi[isp])*np.cos(psi[isp])
+    u[1] = (vx/vt)*np.sin(fi[isp])+(vy/vt)*np.cos(fi[isp])*np.cos(psi[isp])
+    u[2] =                         (vy/vt)*               np.sin(psi[isp])
+
+    return 1.0*polynom(wt)*z, u
+
+
 def bx(x, y):
-    return 1.0
+    bx = 0.0
+    for isp in range(num_of_spots):
+        b, u = b_and_u(x, y, isp)
+        bx += b*u[0]
+    return bx
 
 
 def by(x, y):
-    return 0.0
+    by = 0.0
+    for isp in range(num_of_spots):
+        b, u = b_and_u(x, y, isp)
+        by += b*u[1]
+    return by
 
 
 def bz(x, y):
-    return 0.
+    bz = 0.0
+    for isp in range(num_of_spots):
+        b, u = b_and_u(x, y, isp)
+        bz += b*u[2]
+    return bz
 
 
 def v0(x, y):
@@ -88,11 +127,81 @@ def v0(x, y):
 
 
 def vth(x, y):
-    return 0.2
+    return np.sqrt(0.2)
+
+
+#/home/smets/codeS/pYwi/pywi/runs/run.py
+
+
+def az(x, y):
+    from numpy.fft import fft2
+    from numpy.fft import ifft2
+
+    def k_(axis, L, N):
+        N_ = N[axis]
+        L_ = L[axis]
+        m = np.linspace(0, N_-1, N_)
+        mplus  =  m[            :int(N_/2)+1   ]
+        mminus = -m[int((N-1)/2):0          :-1]
+        return np.concatenate((mplus, mminus))*2*np.pi/L_
+
+    N = [n+1 for n in numofcells]
+
+    x = np.linspace(-L[0], +L[0], N[0])
+    y = np.linspace(-L[1], +L[1], N[1])
 
 
 
 
+    return 1.0
+
+
+
+
+
+
+
+
+
+
+def getAz_fft(self, time) :
+
+    from numpy.fft import fft2
+    from numpy.fft import ifft2
+
+    def k_(axis, sup, dim):
+        N = dim[axis]
+        k = np.linspace(0, N-1, N)
+        kplus  =  k[:int(N/2)+1]
+        kminus = -k[int((N-1)/2):0:-1]
+        return np.concatenate((kplus, kminus))*2*np.pi/sup[axis]
+
+    dim = self.ncells+1
+    sup = self.domsize
+
+    x = np.linspace(-sup[0], +sup[0], dim[0])
+    y = np.linspace(-sup[1], +sup[1], dim[1])
+
+    xv, yv = np.meshgrid(x, y, indexing = 'ij')
+
+    bx = self.getB(time, 'x')+1j*np.zeros(yv.shape)
+    by = self.getB(time, 'y')+1j*np.zeros(xv.shape)
+
+    kx = k_(0, sup, dim)
+    ky = k_(1, sup, dim)
+
+    wy, wx = np.meshgrid(ky, kx)
+
+    k2 = np.square(wx)+np.square(wy)
+    k2[0][0] = 1.0
+
+    BX = fft2(bx)
+    BY = fft2(by)
+
+    AZ = np.divide(1j*(wx*BY-wy*BX), k2)
+    AZ[0][0] = 0.0
+
+    return ifft2(AZ).real
 
 
 
@@ -167,8 +276,6 @@ def main():
     y = (0.5+np.arange(numofcells[1]))*mesh[1]
     xv, yv = np.meshgrid(x, y)
 
-    n0 = density(xv, yv)
-
     X = np.arange(numofcells[0]+1)*mesh[0]
     Y = np.arange(numofcells[1]+1)*mesh[1]
 
@@ -181,12 +288,15 @@ def main():
     rc('axes', labelsize='larger')
     rc('mathtext', default='regular')
 
+    #   z = density(xv, yv)
+    #   z, u = b_and_u(xv, yv, 0)
+    z = bx(xv, yv)
 
-
+    minmax=[-1, 1]
     fig, ax = plt.subplots(figsize=(6, 5))
 
-    pcm = ax.pcolormesh(X, Y, n0, cmap='viridis_r', edgecolors='face', vmin=0, vmax=1)
-    ic = ax.contour(x, y, n0, 8, colors=('k'))
+    pcm = ax.pcolormesh(X, Y, z, cmap='viridis_r', edgecolors='face', vmin=minmax[0], vmax=minmax[1])
+    ic = ax.contour(x, y, z, 8, colors=('k'), linewidths=(0.2), levels=12)
 
     ax.xaxis.set_major_locator(ticker.LinearLocator(3))
     ax.yaxis.set_major_locator(ticker.LinearLocator(3))
@@ -194,9 +304,9 @@ def main():
     ax.set_xlabel('$x / l_p$')
     ax.set_ylabel('$y / l_p$')
 
-    plt.title('$\mathrm{Electron \ Density}$')
+    plt.title('$\mathrm{2\ Hot \ Spots}$')
 
-    cbar = fig.colorbar(pcm, ticks = [0, 0.5, 1], pad = 0.03, aspect = 40)
+    cbar = fig.colorbar(pcm, ticks = [minmax[0], minmax[1]], pad = 0.03, aspect = 40)
 
     plt.savefig('zob.pdf')
 
