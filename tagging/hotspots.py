@@ -32,10 +32,10 @@ L = [i*d for i, d in zip(numofcells, mesh)]
 # spot_width = [0.2, 0.2]
 
 num_of_spots = 1
-fi  = np.radians([0])
-psi = np.radians([0])
+fi  = np.radians([90])
+psi = np.radians([40])
 spot_pos = [[0.5*L[0], 0.5*L[1]]]
-spot_axis = [[0.3*L[0], 0.2*L[1]]]
+spot_axis = [[0.3*L[0], 0.3*L[1]]]
 spot_width = [[0.5]]
 
 
@@ -137,72 +137,41 @@ def az(x, y):
     from numpy.fft import fft2
     from numpy.fft import ifft2
 
+    N = [n+1 for n in numofcells]
+
+    x = np.linspace(0, +L[0], N[0])
+    y = np.linspace(0, +L[1], N[1])
+
+    xv, yv = np.meshgrid(x, y)
+
+    bx_ = bx(xv, yv)+1j*np.zeros(yv.shape)
+    by_ = by(xv, yv)+1j*np.zeros(xv.shape)
+
     def k_(axis, L, N):
         N_ = N[axis]
         L_ = L[axis]
         m = np.linspace(0, N_-1, N_)
         mplus  =  m[            :int(N_/2)+1   ]
-        mminus = -m[int((N-1)/2):0          :-1]
+        mminus = -m[int((N_-1)/2):0          :-1]
         return np.concatenate((mplus, mminus))*2*np.pi/L_
 
-    N = [n+1 for n in numofcells]
+    kx = k_(0, L, N)
+    ky = k_(1, L, N)
 
-    x = np.linspace(-L[0], +L[0], N[0])
-    y = np.linspace(-L[1], +L[1], N[1])
+    kxv, kyv = np.meshgrid(kx, ky)
 
-
-
-
-    return 1.0
-
-
-
-
-
-
-
-
-
-
-def getAz_fft(self, time) :
-
-    from numpy.fft import fft2
-    from numpy.fft import ifft2
-
-    def k_(axis, sup, dim):
-        N = dim[axis]
-        k = np.linspace(0, N-1, N)
-        kplus  =  k[:int(N/2)+1]
-        kminus = -k[int((N-1)/2):0:-1]
-        return np.concatenate((kplus, kminus))*2*np.pi/sup[axis]
-
-    dim = self.ncells+1
-    sup = self.domsize
-
-    x = np.linspace(-sup[0], +sup[0], dim[0])
-    y = np.linspace(-sup[1], +sup[1], dim[1])
-
-    xv, yv = np.meshgrid(x, y, indexing = 'ij')
-
-    bx = self.getB(time, 'x')+1j*np.zeros(yv.shape)
-    by = self.getB(time, 'y')+1j*np.zeros(xv.shape)
-
-    kx = k_(0, sup, dim)
-    ky = k_(1, sup, dim)
-
-    wy, wx = np.meshgrid(ky, kx)
-
-    k2 = np.square(wx)+np.square(wy)
+    k2 = np.square(kxv)+np.square(kyv)
     k2[0][0] = 1.0
 
-    BX = fft2(bx)
-    BY = fft2(by)
+    BX = fft2(bx_)
+    BY = fft2(by_)
 
-    AZ = np.divide(1j*(wx*BY-wy*BX), k2)
+    AZ = np.divide(1j*(kxv*BY-kyv*BX), k2)
     AZ[0][0] = 0.0
 
-    return ifft2(AZ).real
+    az = ifft2(AZ).real
 
+    return az[:-1, :-1]
 
 
 
@@ -288,15 +257,27 @@ def main():
     rc('axes', labelsize='larger')
     rc('mathtext', default='regular')
 
+    a = az(xv, yv)
     #   z = density(xv, yv)
     #   z, u = b_and_u(xv, yv, 0)
-    z = bx(xv, yv)
+    z = bz(xv, yv)
 
-    minmax=[-1, 1]
+
+    Bx = bx(xv, yv)
+    By = by(xv, yv)
+
+    dbxdx = np.gradient(Bx, axis=1)
+    dbydy = np.gradient(By, axis=0)
+    divB = dbxdx+dbydy
+    print("       div B = {0:4.6f}".format(np.fabs(dbxdx+dbydy).max()))
+    print("pseudo-div B = {0:4.6f}".format(np.fabs(dbxdx+dbydy).max()*2/np.fabs(dbxdx-dbydy).max()))
+
+    minmax=[-0.4, +0.4]
     fig, ax = plt.subplots(figsize=(6, 5))
 
+    # pcm = ax.pcolormesh(X, Y, z, cmap='viridis_r', edgecolors='face')
     pcm = ax.pcolormesh(X, Y, z, cmap='viridis_r', edgecolors='face', vmin=minmax[0], vmax=minmax[1])
-    ic = ax.contour(x, y, z, 8, colors=('k'), linewidths=(0.2), levels=12)
+    ic = ax.contour(x, y, a, 12, colors=('k'), linewidths=(0.2))
 
     ax.xaxis.set_major_locator(ticker.LinearLocator(3))
     ax.yaxis.set_major_locator(ticker.LinearLocator(3))
@@ -308,7 +289,7 @@ def main():
 
     cbar = fig.colorbar(pcm, ticks = [minmax[0], minmax[1]], pad = 0.03, aspect = 40)
 
-    plt.savefig('zob.pdf')
+    plt.savefig('zob.png')
 
     # simulator = Simulator(gv.sim)
     # simulator.initialize()

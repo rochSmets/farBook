@@ -36,15 +36,15 @@ def config():
     def S(x, x0, l):
         return 0.5*(1. + np.tanh((x-x0)/l))
 
-    def by(y):
+    def bx(x):
         return  0.;
 
-    def bx(x):
+    def by(x):
         from pyphare.pharein.global_vars import sim
         Lx = sim.simulation_domain()[0]
         v1=-1
         v2=1.
-        return v1+(v2-v1)*(S(x,Lx*0.25,1)-S(x, Lx*0.75, 1))
+        return v1+(v2-v1)*(S(x,Lx*0.25, 0.5)-S(x, Lx*0.75, 0.5))
 
     def bz(x):
         return 0.
